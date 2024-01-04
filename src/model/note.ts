@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 interface INote extends Document {
   title: string;
   content: string;
-  userId: string;
+  userId: mongoose.Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -19,7 +19,7 @@ const noteSchema = new mongoose.Schema<INote>(
       required: true,
     },
     userId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
   },
@@ -27,5 +27,7 @@ const noteSchema = new mongoose.Schema<INote>(
     timestamps: true,
   },
 );
+
+noteSchema.index({ title: 'text', content: 'text' });
 
 export const NoteModel = mongoose.model<INote>('Note', noteSchema);

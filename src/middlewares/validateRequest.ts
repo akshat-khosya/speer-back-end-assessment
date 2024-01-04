@@ -4,7 +4,6 @@ import { log } from '../utils';
 
 const validate = (schema: AnySchema) => async (req: Request, res: Response, next: NextFunction) => {
   try {
-    log.info(req.headers);
     await schema.validate({
       body: req.body,
       query: req.query,
