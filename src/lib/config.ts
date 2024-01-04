@@ -7,6 +7,9 @@ class Config {
     this._config = {
       port: process.env.PORT || 4000,
       dbUrl: process.env.DB_URL || '',
+      saltRounds: process.env.SALT_ROUNDS || 10,
+      privateKey: process.env.PRIVATE_KEY || 'someday123%',
+      accessTokenTtl: process.env.ACCESS_TOKEN_TTL || '30d',
     };
   }
 
