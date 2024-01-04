@@ -7,6 +7,8 @@ import {
   deleteNoteByIdAndUserId,
   shareNoteByIdAndUserId,
   searchNotesByKeyword,
+  getSharedNotesWithUserDetails,
+  getSharedNoteByIdAndUserId,
 } from '../services';
 
 const createNoteHandler = async (req: Request, res: Response) => {
@@ -38,7 +40,11 @@ const getAllNotesHandler = async (req: Request, res: Response) => {
 
     const notes = await getNotesByUserId(userId);
 
-    return res.status(200).json({ notes });
+    const sharedNotes = await getSharedNotesWithUserDetails(userId);
+
+    const allNotes = { personal: notes, shared: sharedNotes };
+
+    return res.status(200).json({ notes: allNotes });
   } catch (error) {
     console.error('Error getting all notes:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -56,11 +62,17 @@ const getNoteByIdHandler = async (req: Request, res: Response) => {
 
     const note = await getNoteByIdAndUserId(noteId, userId);
 
-    if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
+    if (note) {
+      return res.status(200).json({ note: { noteDetails: note, type: 'personal' } });
     }
 
-    return res.status(200).json({ note });
+    const sharedNote = await getSharedNoteByIdAndUserId(noteId, userId);
+
+    if (sharedNote) {
+      return res.status(200).json({ note: sharedNote });
+    }
+
+    return res.status(404).json({ error: 'Note not found' });
   } catch (error) {
     console.error('Error getting note by ID:', error);
     return res.status(500).json({ error: 'Internal Server Error' });

@@ -76,7 +76,7 @@ const shareNoteByIdAndUserId = async (noteId: string, userId: mongoose.Types.Obj
       return null;
     }
 
-    const sharedNote = await SharedNoteModel.create({ userId: sharedUserId, noteId });
+    const sharedNote = await SharedNoteModel.create({ userId: userId, sharedUserId: sharedUserId, noteId });
 
     return sharedNote;
   } catch (error) {
@@ -87,14 +87,175 @@ const shareNoteByIdAndUserId = async (noteId: string, userId: mongoose.Types.Obj
 
 const searchNotesByKeyword = async (userId: mongoose.Types.ObjectId, query: string) => {
   try {
-    const searchResults = await NoteModel.find({
-      userId,
-      $text: { $search: query },
+    const regexQuery = new RegExp(query, 'i');
+
+    const personalNotes = await NoteModel.find({
+      $and: [
+        { userId },
+        {
+          $or: [{ title: { $regex: regexQuery } }, { content: { $regex: regexQuery } }],
+        },
+      ],
     });
 
-    return searchResults;
+    const sharedNotes = await SharedNoteModel.aggregate([
+      {
+        $match: { sharedUserId: new mongoose.Types.ObjectId(userId) },
+      },
+      {
+        $lookup: {
+          from: 'notes',
+          localField: 'noteId',
+          foreignField: '_id',
+          as: 'sharedNoteDetails',
+        },
+      },
+      {
+        $unwind: '$sharedNoteDetails',
+      },
+      {
+        $match: {
+          $or: [{ 'sharedNoteDetails.title': { $regex: regexQuery } }, { 'sharedNoteDetails.content': { $regex: regexQuery } }],
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'sharedByUser',
+        },
+      },
+      {
+        $unwind: {
+          path: '$sharedByUser',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          noteId: '$sharedNoteDetails._id',
+          title: '$sharedNoteDetails.title',
+          content: '$sharedNoteDetails.content',
+          sharedByUser: {
+            name: '$sharedByUser.name',
+            email: '$sharedByUser.email',
+          },
+        },
+      },
+    ]);
+
+    return { personal: personalNotes, shared: sharedNotes };
   } catch (error) {
-    console.error('Error searching notes by keyword in the service:', error);
+    console.error('Error searching notes by keyword:', error);
+    throw error;
+  }
+};
+
+const getSharedNotesWithUserDetails = async (userId: mongoose.Types.ObjectId) => {
+  try {
+    console.log(userId);
+    const sharedNotesWithDetails = await SharedNoteModel.aggregate([
+      {
+        $match: { sharedUserId: new mongoose.Types.ObjectId(userId) },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'sharedByUser',
+        },
+      },
+      {
+        $unwind: '$sharedByUser',
+      },
+      {
+        $lookup: {
+          from: 'notes',
+          localField: 'noteId',
+          foreignField: '_id',
+          as: 'sharedNoteDetails',
+        },
+      },
+      {
+        $unwind: '$sharedNoteDetails',
+      },
+      {
+        $project: {
+          noteId: '$noteId',
+          sharedByUser: {
+            name: '$sharedByUser.name',
+            email: '$sharedByUser.email',
+          },
+          sharedNoteDetails: {
+            title: '$sharedNoteDetails.title',
+            content: '$sharedNoteDetails.content',
+          },
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+    ]);
+
+    return sharedNotesWithDetails;
+  } catch (error) {
+    console.error('Error fetching shared notes with user details:', error);
+    throw error;
+  }
+};
+
+const getSharedNoteByIdAndUserId = async (noteId: string, userId: mongoose.Types.ObjectId) => {
+  try {
+    const sharedNote = await SharedNoteModel.aggregate([
+      {
+        $match: { noteId: new mongoose.Types.ObjectId(noteId), sharedUserId: new mongoose.Types.ObjectId(userId) },
+      },
+      {
+        $lookup: {
+          from: 'notes',
+          localField: 'noteId',
+          foreignField: '_id',
+          as: 'noteDetails',
+        },
+      },
+      {
+        $unwind: '$noteDetails',
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'sharedByUser',
+        },
+      },
+      {
+        $unwind: '$sharedByUser',
+      },
+      {
+        $project: {
+          _id: 1,
+          noteId: 1,
+          type: 'private',
+          createdAt: 1,
+          updatedAt: 1,
+          noteDetails: {
+            title: '$noteDetails.title',
+            content: '$noteDetails.content',
+          },
+          sharedByUser: {
+            name: '$sharedByUser.name',
+            email: '$sharedByUser.email',
+          },
+        },
+      },
+    ]);
+
+    return sharedNote[0];
+  } catch (error) {
+    console.error('Error getting shared note by ID and user ID:', error);
     throw error;
   }
 };
@@ -107,4 +268,6 @@ export {
   deleteNoteByIdAndUserId,
   shareNoteByIdAndUserId,
   searchNotesByKeyword,
+  getSharedNotesWithUserDetails,
+  getSharedNoteByIdAndUserId,
 };

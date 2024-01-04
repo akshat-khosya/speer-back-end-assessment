@@ -7,6 +7,8 @@ import {
   deleteNoteByIdAndUserId,
   shareNoteByIdAndUserId,
   searchNotesByKeyword,
+  getSharedNotesWithUserDetails,
+  getSharedNoteByIdAndUserId,
 } from './note';
 
 export {
@@ -19,4 +21,6 @@ export {
   deleteNoteByIdAndUserId,
   shareNoteByIdAndUserId,
   searchNotesByKeyword,
+  getSharedNotesWithUserDetails,
+  getSharedNoteByIdAndUserId,
 };

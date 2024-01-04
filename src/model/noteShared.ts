@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
 interface SharedNote extends Document {
-  userId: string;
-  noteId: string;
+  userId: mongoose.Types.ObjectId;
+  noteId: mongoose.Types.ObjectId;
+  sharedUserId: mongoose.Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -10,11 +11,15 @@ interface SharedNote extends Document {
 const sharedNoteSchema = new mongoose.Schema<SharedNote>(
   {
     userId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
     noteId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
+    sharedUserId: {
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
   },
