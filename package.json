@@ -8,7 +8,9 @@
     "start": "ts-node src/app.ts",
     "lint": "eslint src/**/*.ts --fix",
     "test": "jest --coverage --silent=false  --detectOpenHandles",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "build": "tsc",
+    "server": "node dist/src/app.js"
   },
   "keywords": [],
   "author": "",
