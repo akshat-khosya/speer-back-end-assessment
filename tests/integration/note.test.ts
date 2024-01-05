@@ -5,7 +5,7 @@ const request = require('supertest');
 
 describe('Note API', () => {
   let userToken: string;
-
+  let userId: string;
   beforeAll(async () => {
     const userForAuth = {
       name: 'Test User',
@@ -20,6 +20,7 @@ describe('Note API', () => {
     };
     const loginRes = await request(app).post('/api/auth/login').send(loginCredentials).set('Content-Type', 'application/json');
     userToken = loginRes.body.accessToken;
+    userId = loginRes.body.user.id;
   }, 10000);
 
   describe('Create Note', () => {
@@ -157,67 +158,86 @@ describe('Note API', () => {
     });
   });
 
-    
+  describe('Share Note', () => {
+    it('should share a note with another user', async () => {
+      const shareData = {
+        sharedUserId: '659706c43a935e83ed9f9854',
+      };
+      const res = await request(app)
+        .post(`/api/note/${createdNoteId}/share`)
+        .send(shareData)
+        .set('Authorization', `Bearer ${userToken}`)
+        .set('Content-Type', 'application/json');
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'Note shared successfully');
+      expect(res.body).toHaveProperty('sharedNote');
+    });
+
+    it('another user is same as login user', async () => {
+      const shareData = {
+        sharedUserId: userId,
+      };
+      const res = await request(app)
+        .post(`/api/note/${createdNoteId}/share`)
+        .send(shareData)
+        .set('Authorization', `Bearer ${userToken}`)
+        .set('Content-Type', 'application/json');
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body).toHaveProperty('error', 'Cannot share a note with yourself');
+    });
+
+    it('note not found', async () => {
+      const shareData = {
+        sharedUserId: '659706c43a935e83ed9f9854',
+      };
+      const res = await request(app)
+        .post(`/api/note/659706c43a935e83ed9f9854/share`)
+        .send(shareData)
+        .set('Authorization', `Bearer ${userToken}`)
+        .set('Content-Type', 'application/json');
+
+      expect(res.statusCode).toEqual(404);
+      expect(res.body).toHaveProperty('error', 'Note not found or already shared');
+    });
+  });
+
+  describe('Search from Text', () => {
+    it('should search notes by keyword successfully', async () => {
+      const searchQuery = 'Test';
+      const res = await request(app)
+        .get(`/api/search?q=${searchQuery}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .set('Content-Type', 'application/json');
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'Search successful');
+      expect(res.body).toHaveProperty('results');
+    });
+  });
+
+  describe('Delete Note', () => {
+    it('should delete a personal note by ID', async () => {
+      const res = await request(app).delete(`/api/note/${createdNoteId}`).set('Authorization', `Bearer ${userToken}`);
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('message', 'Note deleted successfully');
+      expect(res.body).toHaveProperty('note');
+      expect(res.body.note._id).toEqual(createdNoteId);
+    });
+
+    it('Note not found', async () => {
+      const res = await request(app).delete(`/api/note/${createdNoteId}`).set('Authorization', `Bearer ${userToken}`);
+      expect(res.statusCode).toEqual(404);
+      expect(res.body).toHaveProperty('error', 'Note not found');
+    });
+
+    it('Note Id not valid ', async () => {
+      const res = await request(app).delete(`/api/note/sampleId`).set('Authorization', `Bearer ${userToken}`);
+      expect(res.statusCode).toEqual(400);
+      expect(res.body).toEqual({ message: 'Invalid MongoDB ObjectId' });    
+    });
+  });
+
   afterAll(async () => {
     await User.deleteOne({ email: 'testuser@example.com' });
   });
 });
-
-// it('should share a note with another user', async () => {
-//   const shareData = {
-//     sharedUserId: '659706c43a935e83ed9f9854',
-//   };
-
-//   const res = await request(app)
-//     .post(`/api/${createdNoteId}/share`)
-//     .send(shareData)
-//     .set('Authorization', `Bearer ${userToken}`)
-//     .set('Content-Type', 'application/json');
-
-//   expect(res.statusCode).toEqual(200);
-//   expect(res.body).toHaveProperty('message', 'Note shared successfully');
-//   expect(res.body).toHaveProperty('sharedNote');
-// });
-
-// it('should update a personal note by ID', async () => {
-//   const updateData = {
-//     title: 'Updated Test Note',
-//     content: 'This is the updated test note.',
-//   };
-
-//   const res = await request(app)
-//     .put(`/api/notes/${createdNoteId}`)
-//     .send(updateData)
-//     .set('Authorization', `Bearer ${userToken}`)
-//     .set('Content-Type', 'application/json');
-
-//   expect(res.statusCode).toEqual(200);
-//   expect(res.body).toHaveProperty('message', 'Note updated successfully');
-//   expect(res.body).toHaveProperty('note');
-//   expect(res.body.note.title).toEqual('Updated Test Note');
-// });
-
-// it('should search notes by keyword successfully', async () => {
-//   const searchQuery = 'Test';
-
-//   const res = await request(app)
-//     .get(`/api/notes/search?q=${searchQuery}`)
-//     .set('Authorization', `Bearer ${userToken}`)
-//     .set('Content-Type', 'application/json');
-
-//   expect(res.statusCode).toEqual(200);
-//   expect(res.body).toHaveProperty('message', 'Search successful');
-//   expect(res.body).toHaveProperty('results');
-//   const searchResults = res.body.results;
-//   expect(searchResults).toHaveLength(1);
-//   expect(searchResults[0]).toHaveProperty('title', 'Test Note');
-// });
-
-// it('should delete a personal note by ID', async () => {
-//   const res = await request(app).delete(`/api/notes/${createdNoteId}`).set('Authorization', `Bearer ${userToken}`);
-
-//   expect(res.statusCode).toEqual(200);
-//   expect(res.body).toHaveProperty('message', 'Note deleted successfully');
-//   expect(res.body).toHaveProperty('note');
-//   expect(res.body.note._id).toEqual(createdNoteId);
-// });
