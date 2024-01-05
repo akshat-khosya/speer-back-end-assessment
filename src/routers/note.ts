@@ -15,7 +15,7 @@ const noteRouter = express.Router();
 
 noteRouter.post('/', validate(createNoteSchema), createNoteHandler);
 
-noteRouter.get('/', validate(createNoteSchema), getAllNotesHandler);
+noteRouter.get('/', getAllNotesHandler);
 
 noteRouter.get('/:id', validate(getNoteByIdSchema), getNoteByIdHandler);
 
